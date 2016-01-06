@@ -8,8 +8,11 @@
 
 - (id)initWithJSONData:(NSData *)data;
 - (id)initWithJSONDictionary:(NSDictionary *)dictionary;
+- (id)clearConfigs;
+- (id)setConfigs:(NSArray*)configs;
 - (NSDictionary *)JSONDictionary;
 - (NSData *)JSONData;
+- (BOOL) hasConfigs;
 
 
 @property (nonatomic, assign) NSInteger current;

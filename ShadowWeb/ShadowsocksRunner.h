@@ -6,12 +6,12 @@
 #import <Foundation/Foundation.h>
 
 
-#define kShadowsocksIPKey @"proxy ip"
-#define kShadowsocksPortKey @"proxy port"
-#define kShadowsocksPasswordKey @"proxy password"
-#define kShadowsocksEncryptionKey @"proxy encryption"
-#define kShadowsocksProxyModeKey @"proxy mode"
-#define kShadowsocksUsePublicServer @"public server"
+#define kRalletsIPKey @"proxy ip"
+#define kRalletsPortKey @"proxy port"
+#define kRalletsPasswordKey @"proxy password"
+#define kRalletsEncryptionKey @"proxy encryption"
+#define kRalletsProxyModeKey @"proxy mode"
+#define kRalletsUsePublicServer @"public server"
 
 
 @interface ShadowsocksRunner : NSObject

@@ -43,7 +43,7 @@
 	<key>PayloadDescription</key>
 	<string>描述文件描述。</string>
 	<key>PayloadDisplayName</key>
-	<string>Shadowsocks(Disabled)</string>
+	<string>Rallets(Disabled)</string>
 	<key>PayloadIdentifier</key>
 	<string>shadowsocks</string>
 	<key>PayloadOrganization</key>

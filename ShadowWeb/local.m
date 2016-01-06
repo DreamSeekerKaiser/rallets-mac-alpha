@@ -201,7 +201,7 @@ static void server_recv_cb (EV_P_ ev_io *w, int revents) {
             char temp[256];
             memcpy(temp, server->buf + 4 + 1, name_len);
             temp[name_len] = '\0';
-            NSLog(@"Connecting %@", [NSString stringWithCString:addr_str encoding:NSUTF8StringEncoding]);
+            // NSLog(@"Connecting %@", [NSString stringWithCString:addr_str encoding:NSUTF8StringEncoding]); // TOPRING
 //#endif
         } else {
             NSLog(@"unsupported addrtype: %d\n", request->atyp);
@@ -561,6 +561,7 @@ void set_config(const char *server, const char *remote_port, const char* passwor
     config_encryption(password, method);
 }
 
+// TODO RALLETS use enum/constans to replace 1/2
 int local_main ()
 {
     int listenfd;
@@ -569,7 +570,7 @@ int local_main ()
 #ifdef DEBUG
         NSLog(@"bind() error..");
 #endif
-        return 1;
+        return 2;
     }
     if (listen(listenfd, SOMAXCONN) == -1) {
         NSLog(@"listen() error.");

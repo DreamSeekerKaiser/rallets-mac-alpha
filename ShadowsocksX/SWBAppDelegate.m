@@ -9,41 +9,181 @@
 #import "GZIP.h"
 #import "SWBConfigWindowController.h"
 #import "SWBQRCodeWindowController.h"
+#import "LoginController.h"
 #import "SWBAppDelegate.h"
 #import "GCDWebServer.h"
 #import "ShadowsocksRunner.h"
 #import "ProfileManager.h"
 #import "AFNetworking.h"
+#import "HttpUtil.h"
+#import "Util.h"
+#import "User.h"
 
-#define kShadowsocksIsRunningKey @"ShadowsocksIsRunning"
-#define kShadowsocksRunningModeKey @"ShadowsocksMode"
-#define kShadowsocksHelper @"/Library/Application Support/ShadowsocksX/shadowsocks_sysconf"
+#define kRalletsIsRunningKey @"ShadowsocksIsRunning"
+#define kRalletsRunningModeKey @"ShadowsocksMode"
+#define kRalletsHelper @"/Library/Application Support/RalletsX/Rallets_sysconf"
 #define kSysconfVersion @"1.0.0"
 
 @implementation SWBAppDelegate {
     SWBConfigWindowController *configWindowController;
+    LoginController *loginController;
     SWBQRCodeWindowController *qrCodeWindowController;
-    NSMenuItem *statusMenuItem;
     NSMenuItem *enableMenuItem;
-    NSMenuItem *autoMenuItem;
-    NSMenuItem *globalMenuItem;
-    NSMenuItem *qrCodeMenuItem;
+    // 账户信息
+    NSMenuItem *loginItem;
+    NSMenuItem *premiumTrafficItem;
+    NSMenuItem *myProfileItem;
+    NSMenuItem *buyServiceItem;
+    // 其他信息
+    NSMenu *othersMenu;
+
+    NSMenuItem *runnimgModeItem;
     NSMenu *serversMenu;
+    NSMenu *accountMenu;
     BOOL isRunning;
-    NSString *runningMode;
     NSData *originalPACData;
     FSEventStreamRef fsEventStream;
     NSString *configPath;
     NSString *PACPath;
     NSString *userRulePath;
     AFHTTPRequestOperationManager *manager;
+    NSTimer* ralletsNotificationtimer;
+    NSTimer* updateConfigurationTimer;
 }
 
 static SWBAppDelegate *appDelegate;
++ (SWBAppDelegate*) one {
+    return appDelegate;
+}
+
+static int RALLETS_NOTIFICATION_REQUEST_INTERVAL = 300;
+- (void)noopAction {}
+
+- (NSString*) enableMenuItemTitle {
+    NSString* action = isRunning ? _L(Turn Off) : _L(Turn On);
+    NSString* mode = [self.runningMode isEqualToString:@"global"] ? _L(Global Mode) : _L(Smart Mode);
+    return [NSString stringWithFormat:@"%@  [%@]", action, mode];
+}
+- (NSString*) modeMenuItemTitle {
+    
+    return [NSString stringWithFormat:@"%@ %@", _L(Switch To), [self.runningMode isEqualToString:@"global"] ? _L(Smart Mode) : _L(Global Mode)];
+}
+- (NSString*) loginMenuItemTitle {
+    return [User one].loggedIn ? [NSString stringWithFormat:@"%@ %@", _L(Logout), [User one].email] : _L(Login);
+}
+
+- (NSString*) runningMode {
+    NSString* mode = [[NSUserDefaults standardUserDefaults] stringForKey:kRalletsRunningModeKey];
+    return mode ? mode : @"global";
+}
+- (void) setRunningMode:(NSString *)mode {
+    [[NSUserDefaults standardUserDefaults] setValue:mode forKey:kRalletsRunningModeKey];
+    [self toggleSystemProxy:true];
+    [self updateMenu];
+}
+
+- (void) updateAccountItems {
+    User* user = [User one];
+    [premiumTrafficItem setTitle:[NSString stringWithFormat:@"%@:  %.3f GB", _L(Remaining Traffic), [user premiumTraffic]]];
+    BOOL loggedIn = user.loggedIn;
+    [buyServiceItem setHidden:!loggedIn];
+    [myProfileItem setHidden:!loggedIn];
+}
+
+- (void)updateMenu {
+    [self updateAccountItems];
+    [loginItem setTitle:[self loginMenuItemTitle]];
+    [enableMenuItem setTitle:[self enableMenuItemTitle]];
+    if (isRunning) {
+        [enableMenuItem setState:1];
+        NSImage *image = [NSImage imageNamed:@"menu_icon"];
+        [image setTemplate:YES];
+        self.item.image = image;
+    } else {
+        [enableMenuItem setState:0];
+        NSImage *image = [NSImage imageNamed:@"menu_icon_disabled"];
+        [image setTemplate:YES];
+        self.item.image = image;
+    }
+    [runnimgModeItem setTitle:[self modeMenuItemTitle]];
+    [self updateServersMenu];
+}
+
+- (void) initSystemStatusBar {
+    self.item = [[NSStatusBar systemStatusBar] statusItemWithLength:20];
+    NSImage *image = [NSImage imageNamed:@"menu_icon"];
+    [image setTemplate:YES];
+    self.item.image = image;
+    self.item.highlightMode = YES;
+    
+    NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Rallets"];
+    [menu setMinimumWidth:200];
+    enableMenuItem = [[NSMenuItem alloc] initWithTitle:[self enableMenuItemTitle] action:@selector(toggleRunning) keyEquivalent:@""];
+    runnimgModeItem = [[NSMenuItem alloc] initWithTitle:[self modeMenuItemTitle] action:@selector(toggleRunningMode) keyEquivalent:@""];
+    
+    [menu addItem:enableMenuItem];
+    [menu addItem:runnimgModeItem];
+    
+    [menu addItem:[NSMenuItem separatorItem]];
+
+    // 服务器下拉菜单
+    serversMenu = [[NSMenu alloc] init];
+    NSMenuItem *serversItem = [[NSMenuItem alloc] init];
+    [serversItem setTitle:_L(Servers)];
+    [serversItem setSubmenu:serversMenu];
+    [menu addItem:serversItem];
+    
+    [menu addItem:[NSMenuItem separatorItem]];
+    
+    // 账户下拉菜单
+    accountMenu = [[NSMenu alloc] init];
+    NSMenuItem *accountItem = [[NSMenuItem alloc] init];
+    [accountItem setTitle:_L(Account)];
+    [accountItem setSubmenu:accountMenu];
+    [menu addItem:accountItem];
+    
+    loginItem = [[NSMenuItem alloc] initWithTitle:_L(Login) action:@selector(onPressLoginItem) keyEquivalent:@""];
+    myProfileItem = [[NSMenuItem alloc] initWithTitle:_L(My Profile) action:@selector(openMyProfilePage) keyEquivalent:@""];
+    buyServiceItem = [[NSMenuItem alloc] initWithTitle:_L(Buy Service) action:@selector(openPaymentPage) keyEquivalent:@""];
+    premiumTrafficItem = [[NSMenuItem alloc] initWithTitle:_L(Remaining Traffic) action:@selector(noopAction) keyEquivalent:@""];
+
+    [accountMenu addItem:myProfileItem];
+    [accountMenu addItem:buyServiceItem];
+    [accountMenu addItem:loginItem];
+    [accountMenu addItem:[NSMenuItem separatorItem]];
+    [accountMenu addItem:premiumTrafficItem];
+    
+    [menu addItem:[NSMenuItem separatorItem]];
+
+    // 其它
+    othersMenu = [[NSMenu alloc] init];
+    NSMenuItem *othersItem = [[NSMenuItem alloc] init];
+    [othersItem setTitle:_L(Others)];
+    [othersItem setSubmenu:othersMenu];
+    [menu addItem:othersItem];
+    [othersMenu addItemWithTitle:_L(Update Routing List) action:@selector(updatePACFromGFWList) keyEquivalent:@""];
+    [othersMenu addItemWithTitle:_L(About Rallets) action:@selector(showHelp) keyEquivalent:@""];
+    [othersMenu addItemWithTitle:[NSString stringWithFormat:@"%@: %@", _L(Version), [Util currentVersion]] action:@selector(noopAction) keyEquivalent:@""];
+    
+    //    [menu addItemWithTitle:_L(Edit User Rule) action:@selector(editUserRule) keyEquivalent:@""];
+    [menu addItem:[NSMenuItem separatorItem]];
+    [menu addItemWithTitle:_L(Quit) action:@selector(exit) keyEquivalent:@""];
+    self.item.menu = menu;
+    [self updateMenu];
+}
+
+- (void)applicationWillFinishLaunching:(NSNotification *)notification{
+    appDelegate = self;
+    [self initSystemStatusBar];
+}
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-    [[NSAppleEventManager sharedAppleEventManager] setEventHandler:self andSelector:@selector(handleURLEvent:withReplyEvent:) forEventClass:kInternetEventClass andEventID:kAEGetURL];
+    [self installHelper];
 
+    [[NSAppleEventManager sharedAppleEventManager] setEventHandler:self andSelector:@selector(handleURLEvent:withReplyEvent:) forEventClass:kInternetEventClass andEventID:kAEGetURL];
+    [self toggleSystemProxy:NO];
+    [HttpUtil postRalletsNotification];
+    [self startTimer];
     // Insert code here to initialize your application
     dispatch_queue_t proxy = dispatch_queue_create("proxy", NULL);
     dispatch_async(proxy, ^{
@@ -61,64 +201,13 @@ static SWBAppDelegate *appDelegate;
 
     manager = [AFHTTPRequestOperationManager manager];
     manager.responseSerializer = [AFHTTPResponseSerializer serializer];
-
-    self.item = [[NSStatusBar systemStatusBar] statusItemWithLength:20];
-    NSImage *image = [NSImage imageNamed:@"menu_icon"];
-    [image setTemplate:YES];
-    self.item.image = image;
-    self.item.highlightMode = YES;
     
-    NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Shadowsocks"];
-    [menu setMinimumWidth:200];
-    
-    statusMenuItem = [[NSMenuItem alloc] initWithTitle:_L(Shadowsocks Off) action:nil keyEquivalent:@""];
-    
-    enableMenuItem = [[NSMenuItem alloc] initWithTitle:_L(Turn Shadowsocks Off) action:@selector(toggleRunning) keyEquivalent:@""];
-//    [statusMenuItem setEnabled:NO];
-    autoMenuItem = [[NSMenuItem alloc] initWithTitle:_L(Auto Proxy Mode) action:@selector(enableAutoProxy) keyEquivalent:@""];
-//    [enableMenuItem setState:1];
-    globalMenuItem = [[NSMenuItem alloc] initWithTitle:_L(Global Mode) action:@selector(enableGlobal)
-        keyEquivalent:@""];
-    
-    [menu addItem:statusMenuItem];
-    [menu addItem:enableMenuItem];
-    [menu addItem:[NSMenuItem separatorItem]];
-    [menu addItem:autoMenuItem];
-    [menu addItem:globalMenuItem];
-    
-    [menu addItem:[NSMenuItem separatorItem]];
-
-    serversMenu = [[NSMenu alloc] init];
-    NSMenuItem *serversItem = [[NSMenuItem alloc] init];
-    [serversItem setTitle:_L(Servers)];
-    [serversItem setSubmenu:serversMenu];
-    [menu addItem:serversItem];
-
-    [menu addItem:[NSMenuItem separatorItem]];
-    [menu addItemWithTitle:_L(Edit PAC for Auto Proxy Mode...) action:@selector(editPAC) keyEquivalent:@""];
-    [menu addItemWithTitle:_L(Update PAC from GFWList) action:@selector(updatePACFromGFWList) keyEquivalent:@""];
-    [menu addItemWithTitle:_L(Edit User Rule for GFWList...) action:@selector(editUserRule) keyEquivalent:@""];
-    [menu addItem:[NSMenuItem separatorItem]];
-    qrCodeMenuItem = [[NSMenuItem alloc] initWithTitle:_L(Generate QR Code...) action:@selector(showQRCode) keyEquivalent:@""];
-    [menu addItem:qrCodeMenuItem];
-    [menu addItem:[[NSMenuItem alloc] initWithTitle:_L(Scan QR Code from Screen...) action:@selector(scanQRCode) keyEquivalent:@""]];
-    [menu addItem:[NSMenuItem separatorItem]];
-    [menu addItemWithTitle:_L(Show Logs...) action:@selector(showLogs) keyEquivalent:@""];
-    [menu addItemWithTitle:_L(Help) action:@selector(showHelp) keyEquivalent:@""];
-    [menu addItem:[NSMenuItem separatorItem]];
-    [menu addItemWithTitle:_L(Quit) action:@selector(exit) keyEquivalent:@""];
-    self.item.menu = menu;
-    [self installHelper];
-    [self initializeProxy];
-
-
-    [self updateMenu];
-
     configPath = [NSString stringWithFormat:@"%@/%@", NSHomeDirectory(), @".ShadowsocksX"];
     PACPath = [NSString stringWithFormat:@"%@/%@", configPath, @"gfwlist.js"];
     userRulePath = [NSString stringWithFormat:@"%@/%@", configPath, @"user-rule.txt"];
     [self monitorPAC:configPath];
-    appDelegate = self;
+    [self restoreRunning];
+    [self updateMenu];
 }
 
 - (NSData *)PACData {
@@ -129,18 +218,15 @@ static SWBAppDelegate *appDelegate;
     }
 }
 
-- (void)enableAutoProxy {
-    runningMode = @"auto";
-    [[NSUserDefaults standardUserDefaults] setValue:runningMode forKey:kShadowsocksRunningModeKey];
-    [self updateMenu];
-    [self reloadSystemProxy];
+- (void)toggleRunningMode {
+    self.runningMode = [self.runningMode isEqualToString:@"global"] ? @"auto" : @"global";
+}
+- (void)enableGlobal {
+    self.runningMode = @"global";
 }
 
-- (void)enableGlobal {
-    runningMode = @"global";
-    [[NSUserDefaults standardUserDefaults] setValue:runningMode forKey:kShadowsocksRunningModeKey];
-    [self updateMenu];
-    [self reloadSystemProxy];
+- (void)enableAuto {
+    self.runningMode = @"auto";
 }
 
 - (void)chooseServer:(id)sender {
@@ -159,16 +245,12 @@ static SWBAppDelegate *appDelegate;
     int i = 0;
     NSMenuItem *publicItem = [[NSMenuItem alloc] initWithTitle:_L(Public Server) action:@selector(chooseServer:) keyEquivalent:@""];
     publicItem.tag = -1;
-    if (-1 == configuration.current) {
-        [publicItem setState:1];
-    }
-    [serversMenu addItem:publicItem];
     for (Profile *profile in configuration.profiles) {
         NSString *title;
         if (profile.remarks.length) {
-            title = [NSString stringWithFormat:@"%@ (%@:%d)", profile.remarks, profile.server, (int)profile.serverPort];
+            title = [NSString stringWithFormat:@"%@", profile.remarks];
         } else {
-            title = [NSString stringWithFormat:@"%@:%d", profile.server, (int)profile.serverPort];
+            title = @"Rallets Server";
         }
         NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:title action:@selector(chooseServer:) keyEquivalent:@""];
         item.tag = i;
@@ -178,40 +260,6 @@ static SWBAppDelegate *appDelegate;
         [serversMenu addItem:item];
         i++;
     }
-    [serversMenu addItem:[NSMenuItem separatorItem]];
-    [serversMenu addItemWithTitle:_L(Open Server Preferences...) action:@selector(showConfigWindow) keyEquivalent:@""];
-}
-
-- (void)updateMenu {
-    if (isRunning) {
-        statusMenuItem.title = _L(Shadowsocks: On);
-        enableMenuItem.title = _L(Turn Shadowsocks Off);
-        NSImage *image = [NSImage imageNamed:@"menu_icon"];
-        [image setTemplate:YES];
-        self.item.image = image;
-    } else {
-        statusMenuItem.title = _L(Shadowsocks: Off);
-        enableMenuItem.title = _L(Turn Shadowsocks On);
-        NSImage *image = [NSImage imageNamed:@"menu_icon_disabled"];
-        [image setTemplate:YES];
-        self.item.image = image;
-    }
-    
-    if ([runningMode isEqualToString:@"auto"]) {
-        [autoMenuItem setState:1];
-        [globalMenuItem setState:0];
-    } else if([runningMode isEqualToString:@"global"]) {
-        [autoMenuItem setState:0];
-        [globalMenuItem setState:1];
-    }
-    if ([ShadowsocksRunner isUsingPublicServer]) {
-        [qrCodeMenuItem setTarget:nil];
-        [qrCodeMenuItem setAction:NULL];
-    } else {
-        [qrCodeMenuItem setTarget:self];
-        [qrCodeMenuItem setAction:@selector(showQRCode)];
-    }
-    [self updateServersMenu];
 }
 
 void onPACChange(
@@ -226,10 +274,7 @@ void onPACChange(
 }
 
 - (void)reloadSystemProxy {
-    if (isRunning) {
-        [self toggleSystemProxy:NO];
-        [self toggleSystemProxy:YES];
-    }
+    [self toggleSystemProxy:isRunning];
 }
 
 - (void)monitorPAC:(NSString *)pacPath {
@@ -255,7 +300,6 @@ void onPACChange(
 }
 
 - (void)editPAC {
-
     if (![[NSFileManager defaultManager] fileExistsAtPath:PACPath]) {
         NSError *error = nil;
         [[NSFileManager defaultManager] createDirectoryAtPath:configPath withIntermediateDirectories:NO attributes:nil error:&error];
@@ -282,36 +326,59 @@ void onPACChange(
   [[NSWorkspace sharedWorkspace] activateFileViewerSelectingURLs:fileURLs];
 }
 
-- (void)showQRCode {
-    NSURL *qrCodeURL = [ShadowsocksRunner generateSSURL];
-    if (qrCodeURL) {
-        qrCodeWindowController = [[SWBQRCodeWindowController alloc] initWithWindowNibName:@"QRCodeWindow"];
-        qrCodeWindowController.qrCode = [qrCodeURL absoluteString];
-        [qrCodeWindowController showWindow:self];
-        [NSApp activateIgnoringOtherApps:YES];
-        [qrCodeWindowController.window makeKeyAndOrderFront:nil];
-    } else {
-        // TODO
-    }
-}
-
 - (void)showLogs {
     [[NSWorkspace sharedWorkspace] launchApplication:@"/Applications/Utilities/Console.app"];
 }
 
 - (void)showHelp {
-    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:NSLocalizedString(@"https://github.com/shadowsocks/shadowsocks-iOS/wiki/Shadowsocks-for-OSX-Help", nil)]];
+    [Util openUrl:@"http://rallets.com"];
+}
+- (void)openMyProfilePage {
+    [[User one] openAccountPageWithAutoLogin:@"profile"];
 }
 
-- (void)showConfigWindow {
-    if (configWindowController) {
-        [configWindowController close];
+- (void)openPaymentPage {
+    [[User one] openAccountPageWithAutoLogin:@"payment"];
+}
+- (void)ralletsNotification {
+    if ([User one].loggedIn) {
+        NSLog(@"rallets_notification");
+        NSMutableURLRequest *postRequest = [HttpUtil makeRequest:@"rallets_notification" params:nil];
+        self.receivedData = [NSMutableData data];
+        NSURLConnection *conn = [[NSURLConnection alloc] initWithRequest:postRequest delegate:self];
+        if(!conn) {
+            NSLog(@"Post /rallets_notification failed");
+        }
     }
-    configWindowController = [[SWBConfigWindowController alloc] initWithWindowNibName:@"ConfigWindow"];
-    configWindowController.delegate = self;
-    [configWindowController showWindow:self];
+}
+- (void)ralletsNotification: (NSTimer*) timer {
+    [self ralletsNotification];
+}
+
+- (void)onPressLoginItem {
+    [self logout:@"You are logged out"];
+}
+
+- (void) logout:(NSString*) message {
+    [ProfileManager setConfigsIfDifferent:nil];
+    [self showLoginForm];
+    [loginController showWarningTitle:message];
+    [[User one] logout];
+    [self setRunning:NO];
+    [self stopProxy];
+}
+- (void) closeLoginForm {
+    if (loginController) {
+        [loginController.windows performClose:loginController];
+    }
+}
+- (void)showLoginForm {
+    [self closeLoginForm];
+    loginController = [[LoginController alloc] initWithWindowNibName:@"LoginWindow"];
+    loginController.delegate = self;
+    [loginController showWindow:self];
     [NSApp activateIgnoringOtherApps:YES];
-    [configWindowController.window makeKeyAndOrderFront:nil];
+    [loginController.window makeKeyAndOrderFront:nil];
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification {
@@ -326,7 +393,7 @@ void onPACChange(
 }
 
 - (void)runProxy {
-    [ShadowsocksRunner reloadConfig];
+    //[ShadowsocksRunner reloadConfig];
     for (; ;) {
         if ([ShadowsocksRunner runProxy]) {
             sleep(1);
@@ -342,7 +409,7 @@ void onPACChange(
 
 - (void)installHelper {
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    if (![fileManager fileExistsAtPath:kShadowsocksHelper] || ![self isSysconfVersionOK]) {
+    if (![fileManager fileExistsAtPath:kRalletsHelper] || ![self isSysconfVersionOK]) {
         NSString *helperPath = [NSString stringWithFormat:@"%@/%@", [[NSBundle mainBundle] resourcePath], @"install_helper.sh"];
         NSLog(@"run install script: %@", helperPath);
         NSDictionary *error;
@@ -359,7 +426,7 @@ void onPACChange(
 - (BOOL)isSysconfVersionOK {
     NSTask *task;
     task = [[NSTask alloc] init];
-    [task setLaunchPath:kShadowsocksHelper];
+    [task setLaunchPath:kRalletsHelper];
     
     NSArray *args;
     args = [NSArray arrayWithObjects:@"-v", nil];
@@ -386,27 +453,29 @@ void onPACChange(
     return YES;
 }
 
-- (void)initializeProxy {
-    runningMode = [self runningMode];
-    id isRunningObject = [[NSUserDefaults standardUserDefaults] objectForKey:kShadowsocksIsRunningKey];
-    if ((isRunningObject == nil) || [isRunningObject boolValue]) {
-        [self toggleSystemProxy:YES];
-    }
-    [self updateMenu];
+- (void)startTimer {
+    ralletsNotificationtimer = [NSTimer scheduledTimerWithTimeInterval:RALLETS_NOTIFICATION_REQUEST_INTERVAL target:self selector:@selector(ralletsNotification:) userInfo:nil repeats:YES];
+}
+
+- (void)stopTimer {
+    [ralletsNotificationtimer invalidate];
+    ralletsNotificationtimer = nil;
 }
 
 - (void)toggleRunning {
-    [self toggleSystemProxy:!isRunning];
-    [[NSUserDefaults standardUserDefaults] setBool:isRunning forKey:kShadowsocksIsRunningKey];
+    NSLog(@"loggedIn?: %hhd, running?: %hhd", [User one].loggedIn, isRunning);
+    if (![User one].loggedIn && !isRunning) return;
+    [self setRunning:!isRunning];
+}
+
+- (void)setRunning:(BOOL)isR {
+    [self toggleSystemProxy:isR];
+    [[NSUserDefaults standardUserDefaults] setBool:isR forKey:kRalletsIsRunningKey];
     [self updateMenu];
 }
 
-- (NSString *)runningMode {
-    NSString *mode = [[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksRunningModeKey];
-    if (mode) {
-        return mode;
-    }
-    return @"auto";
+- (void)restoreRunning {
+    [self toggleSystemProxy:[[NSUserDefaults standardUserDefaults] boolForKey:kRalletsIsRunningKey]];
 }
 
 - (void)toggleSystemProxy:(BOOL)useProxy {
@@ -414,7 +483,7 @@ void onPACChange(
     
     NSTask *task;
     task = [[NSTask alloc] init];
-    [task setLaunchPath:kShadowsocksHelper];
+    [task setLaunchPath:kRalletsHelper];
 
     NSString *param;
     if (useProxy) {
@@ -424,43 +493,84 @@ void onPACChange(
     }
 
     // this log is very important
-    NSLog(@"run shadowsocks helper: %@", kShadowsocksHelper);
+    NSLog(@"run shadowsocks helper in toggleSystemProxy: %@", kRalletsHelper);
     NSArray *arguments;
     arguments = [NSArray arrayWithObjects:param, nil];
     [task setArguments:arguments];
 
-    NSPipe *stdoutpipe;
-    stdoutpipe = [NSPipe pipe];
+    NSPipe *stdoutpipe = [NSPipe pipe];
     [task setStandardOutput:stdoutpipe];
 
-    NSPipe *stderrpipe;
-    stderrpipe = [NSPipe pipe];
+    NSPipe *stderrpipe = [NSPipe pipe];
     [task setStandardError:stderrpipe];
-
-    NSFileHandle *file;
-    file = [stdoutpipe fileHandleForReading];
-
+    
     [task launch];
 
-    NSData *data;
-    data = [file readDataToEndOfFile];
+    [Util logFileHandler:stdoutpipe];
+    [Util logFileHandler:stderrpipe];
+}
 
-    NSString *string;
-    string = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    if (string.length > 0) {
-        NSLog(@"%@", string);
-    }
-
-    file = [stderrpipe fileHandleForReading];
-    data = [file readDataToEndOfFile];
-    string = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-    if (string.length > 0) {
-        NSLog(@"%@", string);
+- (void)handleURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
+    NSString *url = [[event paramDescriptorForKeyword:keyDirectObject] stringValue];
+    NSAlert *alert = [[NSAlert alloc] init];
+    [alert addButtonWithTitle:_L(OK)];
+    [alert addButtonWithTitle:_L(Cancel)];
+    [alert setMessageText:_L(Use this server?)];
+    [alert setInformativeText:url];
+    [alert setAlertStyle:NSInformationalAlertStyle];
+    if ([alert runModal] == NSAlertFirstButtonReturn) {
+        BOOL result = [ShadowsocksRunner openSSURL:[NSURL URLWithString:url]];
+        if (!result) {
+            alert = [[NSAlert alloc] init];
+            [alert addButtonWithTitle:_L(OK)];
+            [alert setMessageText:@"Invalid Rallets URL"];
+            [alert setAlertStyle:NSCriticalAlertStyle];
+            [alert runModal];
+        }
     }
 }
 
+- (void)stopProxy {
+    [self toggleSystemProxy:NO];
+    [serversMenu removeAllItems];
+}
+
+- (NSAlert*) sysNotifictaionAlert:(NSString*)primaryText informativeText:(NSString*)informativeText {
+    _sysNotifictaionAlert = [[NSAlert alloc] init];
+    [_sysNotifictaionAlert setMessageText:@"Rallets notification"];
+    [_sysNotifictaionAlert addButtonWithTitle:primaryText];
+    [_sysNotifictaionAlert addButtonWithTitle:_L(取消)];
+    [_sysNotifictaionAlert setAlertStyle:NSInformationalAlertStyle];
+    [_sysNotifictaionAlert setInformativeText:informativeText];
+    return _sysNotifictaionAlert;
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveResponse:(NSURLResponse *)response
+{
+    NSLog(@"didReceiveResponse");
+    [self.receivedData setLength:0];
+}
+
+- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data
+{
+    NSLog(@"didReceiveData");
+    [self.receivedData appendData:data];
+    NSLog(@"%ld",[self.receivedData length]);
+}
+
+- (void)connectionDidFinishLoading:(NSURLConnection *)connection
+{
+    NSLog(@"connectionDidFinishLoading");
+    NSLog(@"%ld",[self.receivedData length]);
+    [HttpUtil processRalletsNotificationData:[NSJSONSerialization JSONObjectWithData:self.receivedData options:kNilOptions error:nil]];
+}
+
+- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error {
+    NSLog(@"Post /rallets_notification results error");
+}
+
 - (void)updatePACFromGFWList {
-    [manager GET:@"https://autoproxy-gfwlist.googlecode.com/svn/trunk/gfwlist.txt" parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+    [manager GET:@"https://raw.githubusercontent.com/ralletstellar/gfwlist/master/gfwlist.txt" parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
         // Objective-C is bullshit
         NSData *data = responseObject;
         NSString *str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
@@ -498,7 +608,7 @@ void onPACChange(
         NSString *result = [template stringByReplacingOccurrencesOfString:@"__RULES__" withString:rules];
         [[result dataUsingEncoding:NSUTF8StringEncoding] writeToFile:PACPath atomically:YES];
         NSAlert *alert = [[NSAlert alloc] init];
-        alert.messageText = @"Updated";
+        alert.messageText = _L(Routing List of Smart Mode Updated);
         [alert runModal];
     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
         NSLog(@"Error: %@", error);
@@ -506,26 +616,4 @@ void onPACChange(
         [alert runModal];
     }];
 }
-
-- (void)handleURLEvent:(NSAppleEventDescriptor *)event withReplyEvent:(NSAppleEventDescriptor *)replyEvent {
-    NSString *url = [[event paramDescriptorForKeyword:keyDirectObject] stringValue];
-    NSAlert *alert = [[NSAlert alloc] init];
-    [alert addButtonWithTitle:_L(OK)];
-    [alert addButtonWithTitle:_L(Cancel)];
-    [alert setMessageText:_L(Use this server?)];
-    [alert setInformativeText:url];
-    [alert setAlertStyle:NSInformationalAlertStyle];
-    if ([alert runModal] == NSAlertFirstButtonReturn) {
-        BOOL result = [ShadowsocksRunner openSSURL:[NSURL URLWithString:url]];
-        if (!result) {
-            alert = [[NSAlert alloc] init];
-            [alert addButtonWithTitle:_L(OK)];
-            [alert setMessageText:@"Invalid Shadowsocks URL"];
-            [alert setAlertStyle:NSCriticalAlertStyle];
-            [alert runModal];
-        }
-    }
-}
-
-
 @end

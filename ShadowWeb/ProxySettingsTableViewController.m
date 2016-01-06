@@ -89,9 +89,9 @@
     if (passwordField.text == nil) {
         passwordField.text = @"";
     }
-    [ShadowsocksRunner saveConfigForKey:kShadowsocksIPKey value:ipField.text];
-    [ShadowsocksRunner saveConfigForKey:kShadowsocksPortKey value:portField.text];
-    [ShadowsocksRunner saveConfigForKey:kShadowsocksPasswordKey value:passwordField.text];
+    [ShadowsocksRunner saveConfigForKey:kRalletsIPKey value:ipField.text];
+    [ShadowsocksRunner saveConfigForKey:kRalletsPortKey value:portField.text];
+    [ShadowsocksRunner saveConfigForKey:kRalletsPasswordKey value:passwordField.text];
 
     [ShadowsocksRunner reloadConfig];
 
@@ -110,9 +110,6 @@
 
 - (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView {
     // Return the number of sections.
-    if ([ShadowsocksRunner isUsingPublicServer]) {
-        return 1;
-    }
     return 2;
 }
 
@@ -138,12 +135,7 @@
         UISegmentedControl *segmentedControl = [[UISegmentedControl alloc] initWithItems:@[_L(Public), _L(Custom)]];
         [cell.contentView addSubview:segmentedControl];
         segmentedControl.center = CGPointMake(320 * 0.5f, cell.bounds.size.height * 0.5f);
-        if ([ShadowsocksRunner isUsingPublicServer]) {
-            segmentedControl.selectedSegmentIndex = 0;
-        } else {
-            segmentedControl.selectedSegmentIndex = 1;
-        }
-        [segmentedControl addTarget:self action:@selector(changePublicServer:) forControlEvents:UIControlEventValueChanged];
+        segmentedControl.selectedSegmentIndex = 1;        [segmentedControl addTarget:self action:@selector(changePublicServer:) forControlEvents:UIControlEventValueChanged];
         return cell;
     } else if (indexPath.section == 1) {
         if (indexPath.row == 3) {
@@ -178,21 +170,21 @@
                 cell.textLabel.text = _L(IP);
                 textField.keyboardType = UIKeyboardTypeNumbersAndPunctuation;
                 textField.secureTextEntry = NO;
-                textField.text = [[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksIPKey];
+                textField.text = [[NSUserDefaults standardUserDefaults] stringForKey:kRalletsIPKey];
                 ipField = textField;
                 break;
             case kPortRow:
                 cell.textLabel.text = _L(Port);
                 textField.keyboardType = UIKeyboardTypeNumberPad;
                 textField.secureTextEntry = NO;
-                textField.text = [[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksPortKey];
+                textField.text = [[NSUserDefaults standardUserDefaults] stringForKey:kRalletsPortKey];
                 portField = textField;
                 break;
             case kPasswordRow:
                 cell.textLabel.text = _L(Password);
                 textField.keyboardType = UIKeyboardTypeDefault;
                 textField.secureTextEntry = YES;
-                textField.text = [[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksPasswordKey];
+                textField.text = [[NSUserDefaults standardUserDefaults] stringForKey:kRalletsPasswordKey];
                 passwordField = textField;
                 break;
             default:
@@ -217,7 +209,7 @@
      [self.navigationController pushViewController:detailViewController animated:YES];
      */
     if (indexPath.row == 3) {
-        NSString *v = [[NSUserDefaults standardUserDefaults] objectForKey:kShadowsocksEncryptionKey];
+        NSString *v = [[NSUserDefaults standardUserDefaults] objectForKey:kRalletsEncryptionKey];
         if (!v) {
             v = @"aes-256-cfb";
         }
@@ -252,7 +244,7 @@
                                                                                                    @"seed-cfb",
                                                                                                    nil]
                                                             initialValue:v selectionBlock:^(NSObject *value) {
-                    [[NSUserDefaults standardUserDefaults] setObject:value forKey:kShadowsocksEncryptionKey];
+                    [[NSUserDefaults standardUserDefaults] setObject:value forKey:kRalletsEncryptionKey];
                 }];
         UIViewController *controller = [[UIViewController alloc] init];
         controller.contentSizeForViewInPopover = self.contentSizeForViewInPopover;
@@ -263,14 +255,14 @@
         controller.view = tableView1;
         [self.navigationController pushViewController:controller animated:YES];
     } else if (indexPath.row == 4) {
-        NSString *v = [[NSUserDefaults standardUserDefaults] objectForKey:kShadowsocksProxyModeKey];
+        NSString *v = [[NSUserDefaults standardUserDefaults] objectForKey:kRalletsProxyModeKey];
         if (!v) {
             v = @"pac";
         }
         modeSource = [[SimpleTableViewSource alloc] initWithLabels:[NSArray arrayWithObjects:_L(PAC), _L(Global), nil]
                                                             values:[NSArray arrayWithObjects:@"pac", @"global", nil]
                                                       initialValue:v selectionBlock:^(NSObject *value) {
-                    [[NSUserDefaults standardUserDefaults] setObject:value forKey:kShadowsocksProxyModeKey];
+                    [[NSUserDefaults standardUserDefaults] setObject:value forKey:kRalletsProxyModeKey];
                     SWBAppDelegate *appDelegate = (SWBAppDelegate *) [UIApplication sharedApplication].delegate;
                     [appDelegate updateProxyMode];
                 }];

@@ -5,16 +5,15 @@
 
 #import "ShadowsocksRunner.h"
 #import "local.h"
-
+#define _L(s) NSLocalizedString(@#s, nil)
 
 @implementation ShadowsocksRunner {
-
 }
 
 + (BOOL)settingsAreNotComplete {
-    if ((![ShadowsocksRunner isUsingPublicServer]) && ([[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksIPKey] == nil ||
-            [[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksPortKey] == nil ||
-            [[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksPasswordKey] == nil)) {
+    if ((![ShadowsocksRunner isUsingPublicServer]) && ([[NSUserDefaults standardUserDefaults] stringForKey:kRalletsIPKey] == nil ||
+                                                       [[NSUserDefaults standardUserDefaults] stringForKey:kRalletsPortKey] == nil ||
+                                                       [[NSUserDefaults standardUserDefaults] stringForKey:kRalletsPasswordKey] == nil)) {
         return YES;
     } else {
         return NO;
@@ -22,8 +21,28 @@
 }
 
 + (BOOL)runProxy {
+    static BOOL portOccupiedDialogShown = NO;
+
     if (![ShadowsocksRunner settingsAreNotComplete]) {
-        local_main();
+        int status = local_main();
+        // == 2 为端口被占用
+        if(status != 0 && !portOccupiedDialogShown){
+            portOccupiedDialogShown = YES;
+            NSString *title, *msg;
+            if (status == 1) {
+                title = _L(FAIL_LISTEN_PORT_TITLE);
+                msg = _L(FAIL_LISTEN_PORT_MSG);
+            } else if (status == 2){
+                title = _L(PORT_OCCUPIED_TITLE);
+                msg = _L(PORT_OCCUPIED_MSG);
+            }
+            NSAlert *alert = [[NSAlert alloc] init];
+            [alert addButtonWithTitle:@"OK"];
+            [alert setMessageText:title];
+            [alert setInformativeText:msg];
+            [alert setAlertStyle:NSWarningAlertStyle];
+            [alert runModal];
+        }
         return YES;
     } else {
 #ifdef DEBUG
@@ -39,11 +58,11 @@
             set_config("106.186.124.182", "8911", "Shadowsocks", "aes-128-cfb");
             memcpy(shadowsocks_key, "\x45\xd1\xd9\x9e\xbd\xf5\x8c\x85\x34\x55\xdd\x65\x46\xcd\x06\xd3", 16);
         } else {
-            NSString *v = [[NSUserDefaults standardUserDefaults] objectForKey:kShadowsocksEncryptionKey];
+            NSString *v = [[NSUserDefaults standardUserDefaults] objectForKey:kRalletsEncryptionKey];
             if (!v) {
                 v = @"aes-256-cfb";
             }
-            set_config([[[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksIPKey] cStringUsingEncoding:NSUTF8StringEncoding], [[[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksPortKey] cStringUsingEncoding:NSUTF8StringEncoding], [[[NSUserDefaults standardUserDefaults] stringForKey:kShadowsocksPasswordKey] cStringUsingEncoding:NSUTF8StringEncoding], [v cStringUsingEncoding:NSUTF8StringEncoding]);
+            set_config([[[NSUserDefaults standardUserDefaults] stringForKey:kRalletsIPKey] cStringUsingEncoding:NSUTF8StringEncoding], [[[NSUserDefaults standardUserDefaults] stringForKey:kRalletsPortKey] cStringUsingEncoding:NSUTF8StringEncoding], [[[NSUserDefaults standardUserDefaults] stringForKey:kRalletsPasswordKey] cStringUsingEncoding:NSUTF8StringEncoding], [v cStringUsingEncoding:NSUTF8StringEncoding]);
         }
     }
 }
@@ -86,15 +105,15 @@
         NSString *password = [urlString substringWithRange:NSMakeRange(firstColonRange.location + 1, lastAtRange.location - firstColonRange.location - 1)];
         NSString *IP = [urlString substringWithRange:NSMakeRange(lastAtRange.location + 1, lastColonRange.location - lastAtRange.location - 1)];
         NSString *port = [urlString substringWithRange:NSMakeRange(lastColonRange.location + 1, urlString.length - lastColonRange.location - 1)];
-        [ShadowsocksRunner saveConfigForKey:kShadowsocksIPKey value:IP];
-        [ShadowsocksRunner saveConfigForKey:kShadowsocksPortKey value:port];
-        [ShadowsocksRunner saveConfigForKey:kShadowsocksPasswordKey value:password];
-        [ShadowsocksRunner saveConfigForKey:kShadowsocksEncryptionKey value:method];
-        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:kShadowsocksUsePublicServer];
+        [ShadowsocksRunner saveConfigForKey:kRalletsIPKey value:IP];
+        [ShadowsocksRunner saveConfigForKey:kRalletsPortKey value:port];
+        [ShadowsocksRunner saveConfigForKey:kRalletsPasswordKey value:password];
+        [ShadowsocksRunner saveConfigForKey:kRalletsEncryptionKey value:method];
+        [[NSUserDefaults standardUserDefaults] setBool:NO forKey:kRalletsUsePublicServer];
         [ShadowsocksRunner reloadConfig];
         return YES;
     }
-
+    
     NSLog(@"%@", errorReason);
     return NO;
 }
@@ -104,10 +123,10 @@
         return nil;
     }
     NSString *parts = [NSString stringWithFormat:@"%@:%@@%@:%@",
-                       [ShadowsocksRunner configForKey:kShadowsocksEncryptionKey],
-                       [ShadowsocksRunner configForKey:kShadowsocksPasswordKey],
-                       [ShadowsocksRunner configForKey:kShadowsocksIPKey],
-                       [ShadowsocksRunner configForKey:kShadowsocksPortKey]];
+                       [ShadowsocksRunner configForKey:kRalletsEncryptionKey],
+                       [ShadowsocksRunner configForKey:kRalletsPasswordKey],
+                       [ShadowsocksRunner configForKey:kRalletsIPKey],
+                       [ShadowsocksRunner configForKey:kRalletsPortKey]];
     
     NSString *base64String = [[parts dataUsingEncoding:NSUTF8StringEncoding] base64Encoding];
     NSString *urlString = [NSString stringWithFormat:@"ss://%@", base64String];
@@ -123,12 +142,12 @@
 }
 
 + (void)setUsingPublicServer:(BOOL)use {
-    [[NSUserDefaults standardUserDefaults] setBool:use forKey:kShadowsocksUsePublicServer];
-
+    [[NSUserDefaults standardUserDefaults] setBool:use forKey:kRalletsUsePublicServer];
+    
 }
 
 + (BOOL)isUsingPublicServer {
-    NSNumber *usePublicServer = [[NSUserDefaults standardUserDefaults] objectForKey:kShadowsocksUsePublicServer];
+    NSNumber *usePublicServer = [[NSUserDefaults standardUserDefaults] objectForKey:kRalletsUsePublicServer];
     if (usePublicServer != nil) {
         return [usePublicServer boolValue];
     } else {

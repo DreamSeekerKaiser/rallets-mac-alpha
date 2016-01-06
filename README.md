@@ -1,6 +1,33 @@
-Shadowsocks for iOS and OSX
+Rallets for Mac 
 ===========================
+
+This project is based on [shadowsocks-iOS](https://github.com/shadowsocks/shadowsocks-iOS)
+
+Build
+----
+bin/build.sh -h
+
+#### Build for release
+`Product => Scheme => Edit Scheme => Info => Build Configuration`, select `Release`
+
+Test
+-----
+/Applications/Rallets.app/Contents/MacOS/Rallets &> ~/Desktop/output
+
 [![Build Status](https://travis-ci.org/shadowsocks/shadowsocks-iOS.svg?branch=master)](https://travis-ci.org/shadowsocks/shadowsocks-iOS)
+
+Coding
+------
+Signs:
+*  // TORM
+*  // STEP
+*  // TODO
+*  // PRINT
+
+
+File Location
+------
+* Xcode temporary built apps `~/Library/Developer/Xcode/DerivedData`
 
 
 iOS

@@ -5,3 +5,7 @@
   Created by clowwindy on 6/17/13.
   Copyright (c) 2013 clowwindy. All rights reserved.
 */
+"FAIL_LISTEN_PORT_TITLE" = "Failed in Listening to port";
+"FAIL_LISTEN_PORT_MSG" = "Rallets failed in Listening to ports, please check your network status or email us";
+"PORT_OCCUPIED_TITLE" = "Port is occupied";
+"PORT_OCCUPIED_MSG" = "You Mac may have other software listening to port 1080, please check it and shut it down, then reopen Rallets";

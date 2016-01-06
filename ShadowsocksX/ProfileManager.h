@@ -10,6 +10,12 @@
 
 + (Configuration *)configuration;
 + (void)saveConfiguration:(Configuration *)configuration;
++ (BOOL) setConfigsIfDifferent:(NSArray*)serverConfigs;
++ (void)clearConfigs;
 + (void)reloadShadowsocksRunner;
++ (NSData*)updateConfigurationFromUrl:(NSString*)url;
++ (NSData*) decryptConfiguration: (NSString*) crypted_data;
+
+@property (strong, nonatomic) NSString *ralletsServer;
 
 @end

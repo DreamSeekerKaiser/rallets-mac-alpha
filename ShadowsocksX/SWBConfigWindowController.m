@@ -21,7 +21,7 @@
 }
 
 - (void)addMethods {
-    for (int i = 0; i < kShadowsocksMethods; i++) {
+    for (int i = 0; i < kRalletsMethods; i++) {
         const char* method_name = shadowsocks_encryption_names[i];
         NSString *methodName = [[NSString alloc] initWithBytes:method_name length:strlen(method_name) encoding:NSUTF8StringEncoding];
         [_methodBox addItemWithObjectValue:methodName];
@@ -35,15 +35,15 @@
 }
 
 - (void)saveSettings {
-    [ProfileManager saveConfiguration:configuration];
+    [ProfileManager saveConfiguration];
 //    if (_publicMatrix.selectedColumn == 0) {
 //        [ShadowsocksRunner setUsingPublicServer:YES];
 //    } else {
 //        [ShadowsocksRunner setUsingPublicServer:NO];
-//        [ShadowsocksRunner saveConfigForKey:kShadowsocksIPKey value:[_serverField stringValue]];
-//        [ShadowsocksRunner saveConfigForKey:kShadowsocksPortKey value:[_portField stringValue]];
-//        [ShadowsocksRunner saveConfigForKey:kShadowsocksPasswordKey value:[_passwordField stringValue]];
-//        [ShadowsocksRunner saveConfigForKey:kShadowsocksEncryptionKey value:[_methodBox stringValue]];
+//        [ShadowsocksRunner saveConfigForKey:kRalletsIPKey value:[_serverField stringValue]];
+//        [ShadowsocksRunner saveConfigForKey:kRalletsPortKey value:[_portField stringValue]];
+//        [ShadowsocksRunner saveConfigForKey:kRalletsPasswordKey value:[_passwordField stringValue]];
+//        [ShadowsocksRunner saveConfigForKey:kRalletsEncryptionKey value:[_methodBox stringValue]];
 //    }
 //    if (self.delegate != nil) {
 //        if ([self.delegate respondsToSelector:@selector(configurationDidChange)]) {

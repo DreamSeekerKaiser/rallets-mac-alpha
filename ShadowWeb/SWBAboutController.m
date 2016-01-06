@@ -110,7 +110,7 @@
     [picker setSubject:NSLocalizedString(@"", nil)];
     UIDevice *device = [UIDevice currentDevice];
     NSString *content = [NSString stringWithFormat:@"\n\n\n\n\n\nTechnical Info:\n\n%@ %@\nDevice model: %@\nSystem Version: %@\n",
-                                                   NSLocalizedString(@"Shadowsocks for iOS", nil),
+                                                   NSLocalizedString(@"Rallets for iOS", nil),
                                                    [[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey],
                                                    [device model],
                                                    [device systemVersion]

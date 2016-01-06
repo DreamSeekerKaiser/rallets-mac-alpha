@@ -7,7 +7,6 @@
 
 
 @implementation SWBApplication {
-
 }
 
 // Enable Key Shortcuts

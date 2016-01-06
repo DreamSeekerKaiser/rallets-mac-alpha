@@ -17,7 +17,7 @@ struct encryption_ctx {
 #define STATUS_INIT 1
 #define STATUS_DESTORYED 2
 
-#define kShadowsocksMethods 13
+#define kRalletsMethods 13
 
 const char *shadowsocks_encryption_names[];
 

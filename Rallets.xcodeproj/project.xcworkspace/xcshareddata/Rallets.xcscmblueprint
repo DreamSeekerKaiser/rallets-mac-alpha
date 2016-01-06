@@ -1,0 +1,65 @@
+{
+  "DVTSourceControlWorkspaceBlueprintPrimaryRemoteRepositoryKey" : "47B28B5207C05DF6BD98596A65434B6D5978C4BA",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "D13D26D55186243D670B587A687BD8154BF7E34D" : 0,
+    "CF7A89EA97096B2ABF1C411375A43655D55CF356" : 0,
+    "F6F96CA34C5878B0A9123C7C37855491A5E599DA" : 0,
+    "47B28B5207C05DF6BD98596A65434B6D5978C4BA" : 0,
+    "423DC45DFFDDC223DDAAA21CECBECC0E9E51BD53" : 0,
+    "DD20A1A48C66B5213E0FEBB87A95EF51D6C6F3E8" : 0,
+    "6ACBD9B75A9AF01FED3B43D5A1DC054996850174" : 0
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "2B80B12D-AD8F-458A-8CBB-908D6D35C75A",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "D13D26D55186243D670B587A687BD8154BF7E34D" : "rallets-mac\/NSData-Base64\/",
+    "CF7A89EA97096B2ABF1C411375A43655D55CF356" : "rallets-mac\/AppProxyCap\/",
+    "F6F96CA34C5878B0A9123C7C37855491A5E599DA" : "rallets-mac\/GCDWebServer\/",
+    "47B28B5207C05DF6BD98596A65434B6D5978C4BA" : "rallets-mac\/",
+    "423DC45DFFDDC223DDAAA21CECBECC0E9E51BD53" : "rallets-mac\/iProxy\/",
+    "DD20A1A48C66B5213E0FEBB87A95EF51D6C6F3E8" : "rallets-mac\/AFNetworking\/",
+    "6ACBD9B75A9AF01FED3B43D5A1DC054996850174" : "rallets-mac\/GZIP\/"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "Rallets",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "Rallets.xcodeproj",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/clowwindy\/iProxy.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "423DC45DFFDDC223DDAAA21CECBECC0E9E51BD53"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "git.oschina.net:hophacker\/rallets-mac.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "47B28B5207C05DF6BD98596A65434B6D5978C4BA"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/nicklockwood\/GZIP.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "6ACBD9B75A9AF01FED3B43D5A1DC054996850174"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/freewizard\/AppProxyCap.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "CF7A89EA97096B2ABF1C411375A43655D55CF356"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/l4u\/NSData-Base64.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "D13D26D55186243D670B587A687BD8154BF7E34D"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "github.com:AFNetworking\/AFNetworking.git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "DD20A1A48C66B5213E0FEBB87A95EF51D6C6F3E8"
+    },
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/github.com\/swisspol\/GCDWebServer",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Git",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "F6F96CA34C5878B0A9123C7C37855491A5E599DA"
+    }
+  ]
+}
